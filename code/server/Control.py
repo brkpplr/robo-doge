@@ -12,6 +12,9 @@ from Command import COMMAND as cmd
 
 class Control:
     def __init__(self):
+        self.run_time_limit = 600        # Limit the running time of the robot dog, beyond which it needs to rest mode for 60 seconds
+        self.relax_max_time_limit = 60   # Set the maximum amount of time the robot dog is forced to rest mode
+        self.relax_min_time_limit = 10   # Set the time when the robot dog enters the rest mode when there is no operation
         self.imu=IMU()
         self.servo=Servo()
         self.pid = Incremental_PID(0.5,0.0,0.0025)
@@ -154,11 +157,11 @@ class Control:
     def condition(self):
         while True:
             try:
-                if time.time()-self.move_timeout > 60 and self.move_timeout!=0 and self.relax_flag==True:
+                if time.time()-self.move_timeout > self.relax_max_time_limit and self.move_timeout!=0 and self.relax_flag==True:
                     self.move_count=0
                     self.move_timeout=time.time()
-                if self.move_count < 180:
-                    if (time.time()-self.timeout)>10 and self.timeout!=0 and self.relax_flag==False and self.order[0] == '':
+                if self.move_count < self.run_time_limit:
+                    if (time.time()-self.timeout)>self.relax_min_time_limit and self.timeout!=0 and self.relax_flag==False and self.order[0] == '':
                         self.timeout=time.time()
                         self.relax_flag=True
                         self.relax(True)
@@ -166,7 +169,7 @@ class Control:
                     if self.relax_flag==True and self.order[0] != ''  and self.order[0] !=cmd.CMD_RELAX: 
                         self.relax(False)
                         self.relax_flag=False
-                    if self.attitude_flag==True and self.order[0] !=cmd.CMD_ATTITUDE and self.order[0] != '':
+                    if self.attitude_flag==True and self.order[0] != cmd.CMD_ATTITUDE and self.order[0] != '':
                         self.stop()   
                         self.attitude_flag=False  
                     if self.relax_flag==False: 
@@ -243,12 +246,12 @@ class Control:
                         Thread_IMU=threading.Thread(target=self.IMU6050())
                         Thread_IMU.start()
                         break
-                elif self.move_count > 180 :
+                elif self.move_count > self.run_time_limit :
                     self.relax_flag=True
                     self.relax(True)
                     if self.move_flag!=1:
                         self.move_flag=1
-                    if  self.move_count > 240:
+                    if  self.move_count > (self.run_time_limit+self.relax_max_time_limit):
                         self.move_count=0
                         self.move_flag=0
                     self.order=['','','','','']
@@ -263,7 +266,7 @@ class Control:
             return var            
     def map(self,value,fromLow,fromHigh,toLow,toHigh):
         return (toHigh-toLow)*(value-fromLow) / (fromHigh-fromLow) + toLow
-    def changeCoordinates(self,move_order,X1=0,Y1=96,Z1=0,X2=0,Y2=96,Z2=0,pos=np.mat(np.zeros((3, 4)))):
+    def changeCoordinates(self,move_order,X1=0,Y1=96,Z1=0,X2=0,Y2=96,Z2=0,pos=np.asmatrix(np.zeros((3, 4)))):
         if move_order == 'turnLeft':  
             for i in range(2):
                 self.point[2*i][0]=((-1)**(1+i))*X1+10
@@ -314,7 +317,7 @@ class Control:
             if Y1 > self.height:
                 Y1=self.height
             self.changeCoordinates('backWard',X1,Y1,0,X2,Y2,0)
-            time.sleep(0.01)
+            #time.sleep(0.01)
     def forWard(self):
         for i in range(90,451,self.speed):
             X1=12*math.cos(i*math.pi/180)
@@ -326,7 +329,7 @@ class Control:
             if Y1 > self.height:
                 Y1=self.height
             self.changeCoordinates('forWard',X1,Y1,0,X2,Y2,0)
-            time.sleep(0.01)
+            #time.sleep(0.01)
     def turnLeft(self):
         for i in range(0,361,self.speed):
             X1=3*math.cos(i*math.pi/180)
@@ -340,7 +343,7 @@ class Control:
             Z1=X1
             Z2=X2
             self.changeCoordinates('turnLeft',X1,Y1,Z1,X2,Y2,Z2)
-            time.sleep(0.01)
+            #time.sleep(0.01)
     
     def turnRight(self):
          for i in range(0,361,self.speed):
@@ -355,7 +358,7 @@ class Control:
             Z1=X1
             Z2=X2
             self.changeCoordinates('turnRight',X1,Y1,Z1,X2,Y2,Z2)  
-            time.sleep(0.01)
+            #time.sleep(0.01)
     def stop(self):
         p=[[10, self.height, 10], [10, self.height, 10], [10, self.height, -10], [10, self.height, -10]]
         for i in range(4):
@@ -379,7 +382,7 @@ class Control:
             if Y2 > self.height:
                 Y2=self.height
             self.changeCoordinates('setpLeft',0,Y1,Z1,0,Y2,Z2)
-            time.sleep(0.01)
+            #time.sleep(0.01)
     def setpRight(self):
         for i in range(450,89,-self.speed):
             Z1=10*math.cos(i*math.pi/180)
@@ -391,7 +394,7 @@ class Control:
             if Y2 > self.height:
                 Y2=self.height
             self.changeCoordinates('setpRight',0,Y1,Z1,0,Y2,Z2)
-            time.sleep(0.01)
+            #time.sleep(0.01)
     def relax(self,flag=False):
         if flag==True:
             p=[[55, 78, 0], [55, 78, 0], [55, 78, 0], [55, 78, 0]]
@@ -438,7 +441,7 @@ class Control:
             p=self.pid.PID_compute(p)
             pos=self.postureBalance(r,p,0)
             self.changeCoordinates('Attitude Angle',pos=pos)
-            if  (self.order[0]==cmd.CMD_BALANCE and self.order[1]=='0')or(self.balance_flag==True and self.order[0]!='')or(self.move_count>180):
+            if  (self.order[0]==cmd.CMD_BALANCE and self.order[1]=='0')or(self.balance_flag==True and self.order[0]!='')or(self.move_count>self.run_time_limit):
                 Thread_conditiona=threading.Thread(target=self.condition)
                 Thread_conditiona.start()
                 self.balance_flag==False
@@ -449,28 +452,28 @@ class Control:
         l = 136
         if h!=0:
             h=self.height
-        pos = np.mat([0.0,  0.0,  h ]).T 
+        pos = np.asmatrix([0.0,  0.0,  h ]).T 
         rpy = np.array([r,  p,  y]) * math.pi / 180 
         R, P, Y = rpy[0], rpy[1], rpy[2]
-        rotx = np.mat([[ 1,       0,            0          ],
+        rotx = np.asmatrix([[ 1,       0,            0          ],
                      [ 0,       math.cos(R), -math.sin(R)],
                      [ 0,       math.sin(R),  math.cos(R)]])
-        roty = np.mat([[ math.cos(P),  0,      -math.sin(P)],
+        roty = np.asmatrix([[ math.cos(P),  0,      -math.sin(P)],
                      [ 0,            1,       0          ],
                      [ math.sin(P),  0,       math.cos(P)]]) 
-        rotz = np.mat([[ math.cos(Y), -math.sin(Y),  0     ],
+        rotz = np.asmatrix([[ math.cos(Y), -math.sin(Y),  0     ],
                      [ math.sin(Y),  math.cos(Y),  0     ],
                      [ 0,            0,            1     ]])
         rot_mat = rotx * roty * rotz
-        body_struc = np.mat([[ l / 2,  b / 2,  0],
+        body_struc = np.asmatrix([[ l / 2,  b / 2,  0],
                            [ l / 2, -b / 2,    0],
                            [-l / 2,  b / 2,    0],
                            [-l / 2, -b / 2,    0]]).T
-        footpoint_struc = np.mat([[(l / 2),  (w / 2)+10,  self.height-h],
+        footpoint_struc = np.asmatrix([[(l / 2),  (w / 2)+10,  self.height-h],
                                 [ (l / 2), (-w / 2)-10,    self.height-h],
                                 [(-l / 2),  (w / 2)+10,    self.height-h],
                                 [(-l / 2), (-w / 2)-10,    self.height-h]]).T
-        AB = np.mat(np.zeros((3, 4)))
+        AB = np.asmatrix(np.zeros((3, 4)))
         for i in range(4):
             AB[:, i] = pos + rot_mat * footpoint_struc[:, i] - body_struc[:, i]
         return (AB)
