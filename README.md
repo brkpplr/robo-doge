@@ -18,6 +18,8 @@ This project was picked around the time I was gearing up for my internship at Bo
 
 > A Robot Dog Kit for Raspberry Pi.
 
+This project was originally based on the [Freenove Robot Dog Kit repository](https://github.com/Freenove/Freenove_Robot_Dog_Kit_for_Raspberry_Pi.git).
+
 <img src="./picture/icon.png" width=30%>
 
 ### Download
