@@ -75,6 +75,10 @@ Run these commands from PowerShell. The key remains on the Windows machine and
 must not be copied to the Pi repository or to an evidence bundle.
 
 ```powershell
+ssh -4 -i "$env:USERPROFILE\.ssh\id_ed25519_xark" thareos@Xark
+```
+
+```powershell
 Resolve-DnsName Xark
 Test-NetConnection 10.0.0.96 -Port 22
 ssh -4 -i "$env:USERPROFILE\.ssh\id_ed25519_xark" `
