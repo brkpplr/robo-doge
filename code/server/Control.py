@@ -242,28 +242,27 @@ class Control:
                             self.calibration_point[0][1]=int(self.order[3])
                             self.calibration_point[0][2]=int(self.order[4])
                             self.calibration()
-                            self.run()
                         elif self.order[1]=="two":
                             self.calibration_point[1][0]=int(self.order[2])
                             self.calibration_point[1][1]=int(self.order[3])
                             self.calibration_point[1][2]=int(self.order[4])
                             self.calibration()
-                            self.run()
                         elif self.order[1]=="three":
                             self.calibration_point[2][0]=int(self.order[2])
                             self.calibration_point[2][1]=int(self.order[3])
                             self.calibration_point[2][2]=int(self.order[4])
                             self.calibration()
-                            self.run()   
                         elif self.order[1]=="four":
                             self.calibration_point[3][0]=int(self.order[2])
                             self.calibration_point[3][1]=int(self.order[3])
                             self.calibration_point[3][2]=int(self.order[4])
                             self.calibration()
-                            self.run()
                         elif self.order[1]=="save":
-                            self.saveToTxt(self.calibration_point,'point')
-                            self.stop()
+                            if len(self.order) == 14:
+                                values = [int(value) for value in self.order[2:]]
+                                self.calibration_point = [values[index:index+3] for index in range(0, 12, 3)]
+                                self.calibration()
+                                self.saveToTxt(self.calibration_point,'point')
                     elif self.order[0]==cmd.CMD_BALANCE and self.order[1]=='1':
                         Thread_IMU=threading.Thread(target=self.IMU6050())
                         Thread_IMU.start()

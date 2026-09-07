@@ -723,54 +723,36 @@ class calibrationWindow(QMainWindow,Ui_calibration):
             return
         self.get_point()
         self.x +=1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def X2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.x -= 1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def Y1(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.y += 1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def Y2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.y -= 1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def Z1(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.z += 1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def Z2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.z -= 1
-        command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
-        self.client.send_data(command)
-        #print(command)
         self.set_point()
     def set_point(self,data=None):
         if data==None:
@@ -853,8 +835,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
             self.y = int(self.four_y.text())
             self.z = int(self.four_z.text())
     def save(self):
-        command=cmd.CMD_CALIBRATION+'#'+'save'+'\n'
-        self.client.send_data(command)
+        if not self.pose_ready:
+            return
 
         self.point[0][0] = self.one_x.text()
         self.point[0][1] = self.one_y.text()
@@ -871,6 +853,10 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         self.point[3][0] = self.four_x.text()
         self.point[3][1] = self.four_y.text()
         self.point[3][2] = self.four_z.text()
+
+        values = [str(value) for point in self.point for value in point]
+        command=cmd.CMD_CALIBRATION+'#save#'+'#'.join(values)+'\n'
+        self.client.send_data(command)
 
         self.Save_to_txt(self.point,'point')
         reply = QMessageBox.information(self,                        

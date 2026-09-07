@@ -32,13 +32,16 @@ class MyWindow(QMainWindow,Ui_server):
                 self.states.setText('On')
                 
     def parseOpt(self):
-        self.opts,self.args = getopt.getopt(sys.argv[1:],"tn")
+        self.opts,self.args = getopt.getopt(sys.argv[1:],"tnb")
         for o,a in self.opts:
             if o in ('-t'):
                 print ("Open TCP")
                 self.start_tcp=True
             elif o in ('-n'):
                 self.user_ui=False
+            elif o in ('-b'):
+                self.server.ignore_low_battery=True
+                print("WARNING: low-battery shutdown bypass enabled")
                 
     def on_and_off_server(self):
         if self.pushButton_On_And_Off.text() == 'On':
@@ -61,6 +64,12 @@ class MyWindow(QMainWindow,Ui_server):
                 print(e)
             self.server.turn_off_server()
             print("close")
+    def shutdown(self):
+        self.server.tcp_flag=False
+        self.server.turn_off_server()
+        for thread in (getattr(self, 'video', None), getattr(self, 'instruction', None)):
+            if thread is not None and thread.is_alive():
+                thread.join(timeout=2)
     def closeEvent(self,event):
         try:
             stop_thread(self.video)
@@ -84,11 +93,8 @@ if __name__ == '__main__':
             myshow.show();   
             sys.exit(myshow.app.exec_())
         else:
-            try:
+            while True:
                 pass
-            except KeyboardInterrupt:
-                myshow.close()
-        while True:
-            pass
     except KeyboardInterrupt:
-            myshow.close()
+        myshow.shutdown()
+        sys.exit(0)

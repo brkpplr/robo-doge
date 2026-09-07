@@ -42,6 +42,7 @@ class Server:
         self.sonic=Ultrasonic()
         self.control.Thread_conditiona.start()
         self.battery_voltage=[8.4,8.4,8.4,8.4,8.4]
+        self.ignore_low_battery = False
     def get_interface_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         return socket.inet_ntoa(fcntl.ioctl(s.fileno(),
@@ -65,11 +66,17 @@ class Server:
         print('Server address: '+HOST)
         
     def turn_off_server(self):
-        try:
-            self.connection.close()
-            self.connection1.close()
-        except :
-            print ('\n'+"No client connection")
+        for name in ("connection", "connection1", "server_socket", "server_socket1"):
+            connection = getattr(self, name, None)
+            if connection is not None:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except (OSError, AttributeError):
+                    pass
+                try:
+                    connection.close()
+                except OSError:
+                    pass
     
     def reset_server(self):
         self.turn_off_server()
@@ -92,8 +99,16 @@ class Server:
             pass
         self.server_socket.close()
         print ("socket video connected ... ")
-        camera = Picamera2()
-        camera.configure(camera.create_video_configuration(main={"size": (400, 300)}))
+        try:
+            camera = Picamera2()
+            camera.configure(camera.create_video_configuration(main={"size": (400, 300)}))
+        except RuntimeError as error:
+            print ("Camera unavailable; video disabled: " + str(error))
+            try:
+                self.connection.close()
+            except Exception:
+                pass
+            return
         output = StreamingOutput()
         encoder = JpegEncoder(q=95)
         camera.start_recording(encoder, FileOutput(output),quality=Quality.VERY_HIGH) 
@@ -127,11 +142,8 @@ class Server:
             
     def battery_reminder(self):
         if max(self.battery_voltage) < 6.4:
-            self.turn_off_server()
-            self.control.relax(True)
-            print("The batteries power are too low. Please recharge the batteries or replace batteries.")
-            print("Close the server")
-            os._exit(0)
+            print("WARNING: battery voltage is below 6.4 V; server remains running.")
+            print("Do not move the robot until the battery voltage and ADC wiring are verified.")
     def sednRelaxFlag(self):
         if self.control.move_flag!=2:
             command=cmd.CMD_RELAX+"#"+str(self.control.move_flag)+"\n"

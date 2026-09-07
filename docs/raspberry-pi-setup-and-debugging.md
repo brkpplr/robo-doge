@@ -9,8 +9,9 @@ of the legs whenever a powered test is authorized.
 
 The Pi is reachable from the Windows development machine on 2026-09-07 at
 `10.0.0.96`. ARM I2C was enabled manually and the Pi was rebooted. The
-PCA9685 responds on bus `1`, but server startup currently fails during the
-MPU6050 calibration read loop. No movement command has been issued.
+PCA9685 and sensors respond on bus `1`, and one bounded server startup passed.
+No movement command has been issued. A later server retry was blocked by GPIO17
+being busy while the buzzer was initialized.
 
 The last known connection details come from the `hardware-debugger` repository:
 
@@ -47,6 +48,26 @@ python3 main.py -n -t
 `-n` disables the server GUI and `-t` starts the TCP server. This is not a
 hardware dry-run: constructing the server initializes hardware-facing classes.
 Treat it as a controlled bench test, not as a first connectivity probe.
+
+Low battery is reported but no longer closes the server. The measured power
+value is still sent to the client. The `-b` option remains accepted for
+backward-compatible startup commands:
+
+```bash
+../../.venv/bin/python main.py -n -t -b
+```
+
+The server prints a warning when the measured value is below `6.4 V`. This does
+not prove that the battery or ADC wiring is healthy. Do not issue movement
+commands until the battery voltage has been checked with a multimeter and the
+ADC channel has been verified.
+
+In headless mode, stop the server with `Ctrl+C` once. The shutdown path closes
+the TCP sockets and waits briefly for the worker threads. The previous
+`RuntimeError: super-class __init__() of type MyWindow was never called` was
+caused by headless mode calling the Qt window cleanup method even though no Qt
+window had been initialized. Repeated `Ctrl+C` presses can still interrupt
+Python or camera-library cleanup; wait for the first shutdown to finish.
 
 ## Reconnect and collect evidence first
 
@@ -96,7 +117,7 @@ Once SSH access is restored:
 3. Check the Python version and imports without starting the robot:
 
    ```bash
-   cd ~/robo-doge/Code/server
+   cd ~/robo-doge/code/server
    python3 --version
    python3 -m py_compile *.py
    python3 -c "import smbus2, spidev, gpiozero; print('core imports ok')"
@@ -110,7 +131,7 @@ Once SSH access is restored:
    connected circuit is electrically safe.
 6. Only after the preceding checks pass, run the headless server on a raised,
    supported robot with the battery and emergency stop plan understood.
-7. From the desktop client, update `Code/client/IP.txt` to the confirmed Pi
+7. From the desktop client, update `code/client/IP.txt` to the confirmed Pi
    address, then test connection before enabling video or motion controls.
 
 ## Do not run the bundled installer blindly
@@ -232,6 +253,13 @@ client through `CMD_CALIBRATION#current`. Calibration controls remain disabled
 until a valid pose is received. If the PWM state cannot be read, the client
 reports that the current pose is unavailable instead of issuing a preset move.
 
+Calibration adjustments are now local to the desktop window. The six axis
+buttons update the displayed coordinates without sending servo commands. Save
+sends all 12 coordinates in one `CMD_CALIBRATION#save` message; the server
+recalculates and persists calibration data without calling `run()` or `stop()`.
+This prevents calibration from driving a preset pose or repeatedly actuating a
+servo while the physical linkages are being inspected.
+
 Server startup also no longer calls `relax(True)`, which previously commanded a
 relaxation pose during initialization. No server or motion command has been run
 with this change yet.
@@ -277,3 +305,43 @@ registers. A standalone driver test can wake the MPU6050 and obtain individual
 samples, but a 100-sample loop is not stable. Treat the IMU wiring, power,
 connector seating, and sensor board as the next hardware investigation. Do not
 work around this by skipping IMU initialization or by issuing motion commands.
+
+## Powered connection retest: 2026-09-07
+
+After the robot connection board was powered, all expected devices responded on
+bus `1`:
+
+- PCA9685 `0x40`: `MODE1=0x10`;
+- MPU6050 `0x68`: `WHO_AM_I=0x68`;
+- ADS7830 `0x48`: read succeeded.
+
+The MPU6050 driver woke the sensor, applied the configured ranges, and completed
+100 calibration-length samples with nonzero accelerometer and gyro data. The
+bounded server smoke test then remained running for 8 seconds and exited with
+the expected timeout status `124`. This confirms complete server hardware
+initialization and TCP startup without a client or movement command.
+
+The read-only `CMD_CALIBRATION#current` request returned
+`CMD_CALIBRATION#unavailable` during the first protocol test, so no preset pose
+or servo movement was issued. A later controller-only read reconstructed a
+valid pose, but the rear legs were asymmetric. The rear channels were:
+
+```text
+channels 8, 9, 10:  approximately 84, 120, 51 degrees
+channels 11, 12, 13: approximately 102, 91, 18 degrees
+```
+
+Channel `13` is at the software minimum while the matching rear channels are
+not. This points to rear servo horn/linkage alignment or a saved calibration
+offset, rather than an I2C or IMU failure. Do not run another calibration-save,
+stop, relax, or walking command until the robot is supported and the rear
+linkages are inspected.
+
+## GPIO cleanup blocker: 2026-09-07
+
+A subsequent server start failed while importing `Buzzer.py`: `lgpio` reported
+`GPIO busy` for GPIO17. No Robo-Doge process remained and ports `5001` and
+`8001` had no listeners afterward, but `gpioinfo` still reported GPIO17 as an
+output without an identifiable consumer. Do not bypass the buzzer, forcibly
+claim the pin, or start motion until the GPIO owner is identified or the Pi is
+cleanly rebooted and server startup is repeated.
