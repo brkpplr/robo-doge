@@ -188,7 +188,10 @@ class Control:
                         self.relax_flag=True
                         self.relax(True)
                         self.order=['','','','','']
-                    if self.relax_flag==True and self.order[0] != ''  and self.order[0] !=cmd.CMD_RELAX: 
+                    is_calibration_preview = (self.order[0] == cmd.CMD_CALIBRATION and
+                                              len(self.order) > 1 and
+                                              self.order[1] == 'preview')
+                    if self.relax_flag==True and self.order[0] != ''  and self.order[0] !=cmd.CMD_RELAX and not is_calibration_preview:
                         self.relax(False)
                         self.relax_flag=False
                     if self.attitude_flag==True and self.order[0] != cmd.CMD_ATTITUDE and self.order[0] != '':
@@ -237,7 +240,15 @@ class Control:
                         self.attitude(self.order[1],self.order[2],self.order[3])
                     elif self.order[0]==cmd.CMD_CALIBRATION:
                         self.move_count=0
-                        if self.order[1]=="one":
+                        if self.order[1]=="preview":
+                            if len(self.order) == 14:
+                                values = [int(value) for value in self.order[2:]]
+                                self.point = [values[index:index+3] for index in range(0, 12, 3)]
+                                self.relax_flag=False
+                                self.move_timeout=time.time()
+                                self.run()
+                            self.order=['','','','','']
+                        elif self.order[1]=="one":
                             self.calibration_point[0][0]=int(self.order[2])
                             self.calibration_point[0][1]=int(self.order[3])
                             self.calibration_point[0][2]=int(self.order[4])

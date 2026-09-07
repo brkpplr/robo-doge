@@ -724,36 +724,47 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         self.get_point()
         self.x +=1
         self.set_point()
+        self.preview()
     def X2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.x -= 1
         self.set_point()
+        self.preview()
     def Y1(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.y += 1
         self.set_point()
+        self.preview()
     def Y2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.y -= 1
         self.set_point()
+        self.preview()
     def Z1(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.z += 1
         self.set_point()
+        self.preview()
     def Z2(self):
         if not self.pose_ready:
             return
         self.get_point()
         self.z -= 1
         self.set_point()
+        self.preview()
+
+    def preview(self):
+        values = [str(value) for point in self.point for value in point]
+        command = cmd.CMD_CALIBRATION + '#preview#' + '#'.join(values) + '\n'
+        self.client.send_data(command)
     def set_point(self,data=None):
         if data==None:
             if self.leg== "one":

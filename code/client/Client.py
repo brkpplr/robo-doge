@@ -17,6 +17,7 @@ class Client:
         self.pid=Incremental_PID(1,0,0.0025)
         self.tcp_flag=False
         self.video_flag=True
+        self.connection = None
         self.ball_flag=False
         self.face_flag=False
         self.face_id = False
@@ -26,13 +27,16 @@ class Client:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print (ip)
     def turn_off_client(self):
-        try:
-            self.client_socket.shutdown(2)
-            self.client_socket1.shutdown(2)
-            self.client_socket.close()
-            self.client_socket1.close()
-        except Exception as e:
-            print(e)
+        for socket_object in (getattr(self, 'client_socket', None),
+                              getattr(self, 'client_socket1', None)):
+            if socket_object is None:
+                continue
+            try:
+                socket_object.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            socket_object.close()
+        self.connection = None
     def is_valid_image_4_bytes(self,buf): 
         bValid = True
         if buf[6:10] in (b'JFIF', b'Exif'):     
@@ -101,9 +105,10 @@ class Client:
         try:
             self.client_socket.connect((ip, 8001))
             self.connection = self.client_socket.makefile('rb')
-        except:
-            #print ("command port connect failed")
-            pass
+        except OSError as error:
+            print ("Video connection failed: " + str(error))
+            self.connection = None
+            return
         while True:
             try:
                 stream_bytes= self.connection.read(4)

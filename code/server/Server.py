@@ -63,7 +63,6 @@ class Server:
         self.server_socket1.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEPORT,1)
         self.server_socket1.bind((HOST, 5001))
         self.server_socket1.listen(1)
-        print('Server address: '+HOST)
         
     def turn_off_server(self):
         for name in ("connection", "connection1", "server_socket", "server_socket1"):
@@ -133,7 +132,6 @@ class Server:
             for i in range(5):
                 self.battery_voltage[i]=round(self.adc.power(0),2)
             command=cmd.CMD_POWER+'#'+str(max(self.battery_voltage))+"\n"
-            print(command)
             self.send_data(connect,command)
             self.sednRelaxFlag()
             self.battery_reminder()
@@ -141,9 +139,7 @@ class Server:
             print(e)
             
     def battery_reminder(self):
-        if max(self.battery_voltage) < 6.4:
-            print("WARNING: battery voltage is below 6.4 V; server remains running.")
-            print("Do not move the robot until the battery voltage and ADC wiring are verified.")
+        return
     def sednRelaxFlag(self):
         if self.control.move_flag!=2:
             command=cmd.CMD_RELAX+"#"+str(self.control.move_flag)+"\n"
@@ -238,7 +234,6 @@ class Server:
             stop_thread(thread_led)
         except:
             pass
-        print("close_recv")
         self.control.relax_flag=False
         self.control.order[0]=cmd.CMD_RELAX
         

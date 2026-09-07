@@ -253,12 +253,13 @@ client through `CMD_CALIBRATION#current`. Calibration controls remain disabled
 until a valid pose is received. If the PWM state cannot be read, the client
 reports that the current pose is unavailable instead of issuing a preset move.
 
-Calibration adjustments are now local to the desktop window. The six axis
-buttons update the displayed coordinates without sending servo commands. Save
-sends all 12 coordinates in one `CMD_CALIBRATION#save` message; the server
-recalculates and persists calibration data without calling `run()` or `stop()`.
-This prevents calibration from driving a preset pose or repeatedly actuating a
-servo while the physical linkages are being inspected.
+Calibration adjustments send the complete four-leg pose through
+`CMD_CALIBRATION#preview#...`. The server applies that pose through the normal
+inverse-kinematics and servo output path, without inserting the default stop
+pose first. Save sends all 12 coordinates in one `CMD_CALIBRATION#save` message;
+the server recalculates and persists calibration data. Use preview only with
+the robot supported and the legs clear, because each XYZ button can actuate all
+servos needed to reach the new pose.
 
 Server startup also no longer calls `relax(True)`, which previously commanded a
 relaxation pose during initialization. No server or motion command has been run
@@ -345,3 +346,40 @@ A subsequent server start failed while importing `Buzzer.py`: `lgpio` reported
 output without an identifiable consumer. Do not bypass the buzzer, forcibly
 claim the pin, or start motion until the GPIO owner is identified or the Pi is
 cleanly rebooted and server startup is repeated.
+
+## ADC channel and battery-path diagnosis: 2026-09-07
+
+A read-only device probe was run while the Pi was reachable as `Xark` at
+`10.0.0.96`. The Pi reported `throttled=0x0`, the MPU6050 returned
+`WHO_AM_I=0x68`, the camera was listed as an `ov5647`, and the PCA9685 at
+`0x40` responded. These checks do not show a Pi undervoltage or I2C device
+failure.
+
+The ADS7830 scan produced these median readings using the existing project
+conversion (`raw / 255 * 5 * 2`):
+
+```text
+channel 0: raw 133 -> 5.22 V
+channel 1: raw 181 -> 7.10 V
+channel 2: raw 188 -> 7.37 V
+channel 3: raw 203 -> 7.96 V
+channel 4: raw 202 -> 7.92 V
+channel 5: raw 176 -> 6.90 V
+channel 6: raw 191 -> 7.49 V
+channel 7: raw 195 -> 7.65 V
+```
+
+Channel 0 was stable around `5.22 V`; the other channels varied substantially
+between samples and are not confirmed battery measurements. The server
+currently calls `self.adc.power(0)`, so it is definitely reporting channel 0.
+The result is consistent with channel 0 being connected to the regulated 5 V
+rail, or with the battery sense divider not being connected to that channel.
+Do not change the software to use another channel based only on this scan;
+identify the board schematic or trace the battery divider with power removed,
+then verify the candidate channel using a multimeter.
+
+The probe also found an old `main.py -n -t` process with no TCP listeners;
+that process held GPIO17 through the buzzer. It was stopped, and GPIO17 is now
+no longer claimed by `lg`. A clean server start should be performed only after
+the battery input, regulated 5 V rail, and ADC channel are independently
+measured.
