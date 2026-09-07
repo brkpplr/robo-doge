@@ -32,9 +32,10 @@ class Control:
         self.relax_flag=True
         self.balance_flag=False
         self.attitude_flag=False
+        self.current_pose_valid=False
         self.Thread_conditiona=threading.Thread(target=self.condition)
         self.calibration()
-        self.relax(True)
+        self.current_pose_valid=self.read_current_pose()
         #self.link_1 = 23 hip distance to next link
         #self.link_2 = 55 from hip to knee
         #self.link_3 = 55 from knee to tip of the leg
@@ -119,6 +120,27 @@ class Control:
             self.calibration_angle[i][0]=self.calibration_angle[i][0]-self.angle[i][0]
             self.calibration_angle[i][1]=self.calibration_angle[i][1]-self.angle[i][1]
             self.calibration_angle[i][2]=self.calibration_angle[i][2]-self.angle[i][2]
+
+    def read_current_pose(self):
+        servo_angles=[]
+        channels=[4,3,2,7,6,5,8,9,10,11,12,13]
+        for channel in channels:
+            angle=self.servo.getServoAngle(channel)
+            if angle is None:
+                return False
+            servo_angles.append(angle)
+        for i in range(2):
+            a=servo_angles[i*3]-self.calibration_angle[i][0]
+            b=90-servo_angles[i*3+1]-self.calibration_angle[i][1]
+            c=servo_angles[i*3+2]-self.calibration_angle[i][2]
+            self.point[i]=list(self.angleToCoordinate(a,b,c))
+        for i in range(2):
+            leg=i+2
+            a=servo_angles[6+i*3]-self.calibration_angle[leg][0]
+            b=servo_angles[6+i*3+1]-90-self.calibration_angle[leg][1]
+            c=180-servo_angles[6+i*3+2]-self.calibration_angle[leg][2]
+            self.point[leg]=list(self.angleToCoordinate(a,b,c))
+        return True
     def run(self):
         if self.checkPoint():
             try:

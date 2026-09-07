@@ -205,6 +205,15 @@ class Server:
                     else:
                         command=cmd.CMD_WORKING_TIME+'#'+str(round(self.control.move_count))+'#'+str(0)+"\n"
                     self.send_data(self.connection1,command)
+                elif cmd.CMD_CALIBRATION in data and len(data) > 1 and data[1] == 'current':
+                    if self.control.current_pose_valid:
+                        values=[]
+                        for point in self.control.point:
+                            values.extend([str(round(value)) for value in point])
+                        command=cmd.CMD_CALIBRATION+'#current#'+'#'.join(values)+"\n"
+                    else:
+                        command=cmd.CMD_CALIBRATION+'#unavailable\n'
+                    self.send_data(self.connection1,command)
                 else:
                     self.control.order=data
                     self.control.timeout=time.time()

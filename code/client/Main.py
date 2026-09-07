@@ -331,6 +331,9 @@ class MyWindow(QMainWindow,Ui_client):
                         self.Button_Relax.setText('Relax')
                     else:
                         self.Button_Relax.setText('"Too tired..."')
+                elif data[0]==cmd.CMD_CALIBRATION and len(data)>1:
+                    if hasattr(self,'calibrationWindow'):
+                        self.calibrationWindow.set_current_pose(data[1:])
 
     def refresh_image(self):
         try:
@@ -560,7 +563,6 @@ class MyWindow(QMainWindow,Ui_client):
             print(e)
         
     def showCalibrationWindow(self):
-        self.stop()
         self.calibrationWindow=calibrationWindow(self.client)
         self.calibrationWindow.setWindowModality(Qt.ApplicationModal)
         self.calibrationWindow.show()
@@ -695,9 +697,12 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         self.set_point(self.point)
         self.client=client
         self.leg='one'
+        self.pose_ready=False
         self.x=0
         self.y=0
         self.z=0
+        self.set_adjustment_enabled(False)
+        self.client.send_data(cmd.CMD_CALIBRATION+'#current\n')
         self.radioButton_one.setChecked(True)
         self.radioButton_one.toggled.connect(lambda: self.leg_point(self.radioButton_one))
         self.radioButton_two.setChecked(False)
@@ -714,6 +719,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         self.Button_Z1.clicked.connect(self.Z1)
         self.Button_Z2.clicked.connect(self.Z2)
     def X1(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.x +=1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -721,6 +728,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         #print(command)
         self.set_point()
     def X2(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.x -= 1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -728,6 +737,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         #print(command)
         self.set_point()
     def Y1(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.y += 1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -735,6 +746,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         #print(command)
         self.set_point()
     def Y2(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.y -= 1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -742,6 +755,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         #print(command)
         self.set_point()
     def Z1(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.z += 1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -749,6 +764,8 @@ class calibrationWindow(QMainWindow,Ui_calibration):
         #print(command)
         self.set_point()
     def Z2(self):
+        if not self.pose_ready:
+            return
         self.get_point()
         self.z -= 1
         command=cmd.CMD_CALIBRATION+'#'+self.leg+'#'+str(self.x)+'#'+str(self.y)+'#'+str(self.z)+'\n'
@@ -798,6 +815,26 @@ class calibrationWindow(QMainWindow,Ui_calibration):
             self.four_x.setText(str(data[3][0]))
             self.four_y.setText(str(data[3][1]))
             self.four_z.setText(str(data[3][2]))
+    def set_adjustment_enabled(self,enabled):
+        for button in (self.Button_X1,self.Button_X2,self.Button_Y1,self.Button_Y2,self.Button_Z1,self.Button_Z2):
+            button.setEnabled(enabled)
+    def set_current_pose(self,data):
+        if data[0] == 'unavailable':
+            self.setWindowTitle('Calibration (current pose unavailable)')
+            return
+        if data[0] != 'current' or len(data) != 13:
+            return
+        try:
+            values=[int(round(float(value))) for value in data[1:]]
+            current=[values[index:index+3] for index in range(0,12,3)]
+        except (TypeError, ValueError):
+            return
+        self.point=current
+        self.set_point(current)
+        self.get_point()
+        self.pose_ready=True
+        self.set_adjustment_enabled(True)
+        self.setWindowTitle('Calibration (current pose)')
     def get_point(self):
         if self.leg== "one":
             self.x = int(self.one_x.text())

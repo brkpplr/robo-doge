@@ -18,6 +18,12 @@ class Servo:
         date=self.map(angle,0,180,102,512)
         #print(date,date/4096*0.02)
         self.pwm.setPWM(channel, 0, int(date))
+
+    def getServoAngle(self, channel):
+        on, off = self.pwm.getPWM(channel)
+        if on != 0 or off < 102 or off > 512:
+            return None
+        return self.map(off,102,512,0,180)
  
 # Main program logic follows:
 if __name__ == '__main__':
