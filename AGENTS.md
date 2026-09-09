@@ -155,6 +155,26 @@ This is not a dry run. Constructing the server initializes hardware-facing class
 
 Stop the headless server with one `Ctrl+C` and wait for cleanup. Repeated `Ctrl+C` presses can interrupt thread joins, Python shutdown, and Picamera2 cleanup, producing secondary tracebacks. A traceback during repeated interruption does not necessarily mean the initial server operation failed.
 
+### Desktop client startup
+
+Start the PyQt desktop client on the Windows machine after the Pi server is listening:
+
+```powershell
+Set-Location C:\Users\bruno\code\robo-doge\code\client
+..\..\.venv\Scripts\python.exe Main.py
+```
+
+The client must be launched with `code\client` as the working directory because it loads `IP.txt`, `point.txt`, and images using relative paths. Before launching, verify that `IP.txt` contains the Pi's current confirmed address. The file currently contains `10.0.0.96`, but the address is DHCP-supplied and may change.
+
+In the client window:
+
+1. Confirm the IP address field and click `Connect`.
+2. Confirm that the control connection succeeds before using movement, calibration, relax, buzzer, LED, or other hardware controls.
+3. Treat `Open Video` as optional. Port `5001` carries control and telemetry; port `8001` carries video. Control can work when camera capture or video connection fails.
+4. Close the client with its window close control so the client can stop worker threads and close both sockets.
+
+This client command can initialize the GUI without moving the robot, but clicking controls after connection can energize or move hardware. Use the physical preflight above before connecting to a powered robot.
+
 ## Server Behavior
 
 The server opens two sockets:
