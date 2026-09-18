@@ -331,7 +331,7 @@ The workspace may also use the meta-repository helper from `C:\Users\bruno\code`
 
 ```powershell
 Set-Location C:\Users\bruno\code
-.\ScriptLib.ps1 --push
+oltra --push --repo robo-doge
 ```
 
 Use the helper only after checking what it will push. Never push unrelated child-repository changes accidentally.

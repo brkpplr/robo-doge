@@ -17,7 +17,7 @@ Windows is the source of truth for intentional code changes. Read `robo-doge/AGE
    git diff --check
    python -m py_compile code\client\Client.py code\client\Main.py code\server\Control.py code\server\Server.py
    ```
-2. Review the diff and commit only the requested changes. Push only to personal `origin` on `main`; the workspace `ScriptLib.ps1 --push` workflow is allowed after review.
+2. Review the diff and commit only the requested changes. Push only to personal `origin` on `main`; the workspace `oltra --push --repo robo-doge` workflow is allowed after review.
 3. Do not force-push, reset, or discard local work.
 
 ## Pi
